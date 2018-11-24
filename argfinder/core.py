@@ -2,9 +2,13 @@ import argparse
 import re
 
 __version__ = '1.0.0'
-WITHOUT_ARGS_REGEX = re.compile(r'\S+\(\)')
-WITH_ARGS_REGEX = re.compile(r'\S+\(\s*([^)]+?)\s*\)')
 
+REGEX = {
+    'without_args': re.compile(r'\S+\(\)'),
+    'without_args_with_parents': re.compile(r'(\w+\.\w+)(?=\()'),
+    'with_args': re.compile(r'\S+\(\s*([^)]+?)\s*\)'),
+}
+REGEX_LIST = '\ '.join(['{}'.format(v) for v in REGEX.values()]).replace(' ', '')
 
 def _parse_args():
 
@@ -32,13 +36,19 @@ class Argfinder(object):
     def parse(self):
         self.code = self.upload_code()
         for key in self.code.keys():
-            if re.search(WITHOUT_ARGS_REGEX, self.code[key]):
-                print('{}: {}'.format(key, self.code[key].strip()))
+            value = self.code[key].strip()
+            if REGEX['without_args'].search(value):
+                if value[:3] == 'def':
+                    self.defined_funcs[value[3:].split('(')[0]] = {'required': [], 'optional': [], 'parent': None}
+                else:
+                    with_parent = REGEX['without_args_with_parents'].findall(value)
+                    if with_parent:
+                        for v in with_parent:
+                            if v not in REGEX_LIST:
+                                print(with_parent)
+                    # print('{}: {} ---- EXEC func'.format(key, value))
+        print(self.defined_funcs)
 
-        # wout = WITHOUT_ARGS_REGEX.findall(self.code)
-        # wt = WITH_ARGS_REGEX.findall(self.code)
-        # print(wout)
-        # print(wt)
 
     def upload_code(self):
         code = {}
